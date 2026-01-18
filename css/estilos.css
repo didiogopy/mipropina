@@ -68,9 +68,9 @@
     --radius-xl: 24px;
     
     /* ---- ANIMACIONES ---- */
-    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    --transition-fast: all 0.15s ease-out;
-    --transition-slow: all 0.5s ease;
+    --transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.3s ease, border-color 0.3s ease;
+    --transition-fast: opacity 0.15s ease-out, transform 0.15s ease-out;
+    --transition-slow: opacity 0.5s ease, transform 0.5s ease;
 }
 
 /* ---- TEMA OSCURO (Night Mode) ---- */
@@ -369,10 +369,12 @@ body {
     padding: 15px 5px;
     text-align: center;
     cursor: pointer;
-    transition: var(--transition);
+    transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
     color: var(--text-muted);
     font-weight: var(--font-weight-medium);
     font-size: 0.85rem;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .method-card i {
@@ -417,8 +419,10 @@ body {
     font-weight: var(--font-weight-bold);
     margin-top: 15px;
     box-shadow: 0 10px 20px -5px var(--primary-glow);
-    transition: var(--transition);
+    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .btn-action:hover {
@@ -441,9 +445,11 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: var(--transition-fast);
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
     margin-right: 6px;
     font-size: 0.95rem;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .btn-edit-mini:hover {
@@ -468,8 +474,10 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: var(--transition-fast);
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
     font-size: 0.95rem;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .btn-trash-mini:hover {
@@ -492,7 +500,9 @@ body {
     font-size: 0.8rem;
     font-weight: var(--font-weight-medium);
     cursor: pointer;
-    transition: var(--transition-fast);
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    will-change: background-color;
+    transform: translateZ(0);
 }
 
 .btn-filter.active {

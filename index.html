@@ -6,22 +6,38 @@
          ============================================================================ -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Portal del Colaborador - Mediterráneo">
+    <meta name="theme-color" content="#D32F2F">
     <title>Mediterráneo | Portal Colaborador</title>
+
+    <!-- ============================================================================
+         PRELOAD Y OPTIMIZACIONES DE PERFORMANCE
+         ============================================================================ -->
+    <!-- Preload de fuente crítica -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" as="style">
+    
+    <!-- DNS Prefetch para CDNs -->
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://www.gstatic.com">
 
     <!-- ============================================================================
          ESTILOS EXTERNOS
          ============================================================================ -->
     <!-- Bootstrap 5.3.0: Sistema de componentes y grid responsive -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"></noscript>
 
     <!-- Font Awesome 6.4.0: Librería de iconos -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
 
-    <!-- Google Fonts: Plus Jakarta Sans -->
+    <!-- Google Fonts: Plus Jakarta Sans (con display=swap para mejor performance) -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- SweetAlert2: Modales y alertas personalizadas -->
-    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css" rel="stylesheet"></noscript>
 
     <!-- Estilos personalizados del proyecto -->
     <link rel="stylesheet" href="css/estilos.css">
@@ -72,7 +88,7 @@
         <!-- Zona de usuario y logout -->
         <div class="d-flex align-items-center gap-2 gap-md-3">
             <div class="user-pill">
-                <img id="userPhoto" src="" alt="User">
+                <img id="userPhoto" src="" alt="User" loading="lazy">
                 <span id="userName" class="user-name-text">Usuario</span>
             </div>
             <button onclick="logout()" class="btn btn-sm text-danger" title="Cerrar Sesión">
