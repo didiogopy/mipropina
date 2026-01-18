@@ -30,7 +30,8 @@ import {
     where,
     orderBy,
     getDocs,
-    limit
+    limit,
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 import { db } from "../config/firebase.js";
@@ -56,6 +57,15 @@ let fechaVisualizacion = new Date();
 
 /** @type {string} Filtro activo ('dia', 'mes', 'ano') */
 let filtroActual = 'dia';
+
+/** @type {Function} Unsubscribe function para listener de Firestore */
+let unsubscribeFromIngresos = null;
+
+/** @type {number} ID del intervalo de polling automático */
+let pollingInterval = null;
+
+/** @type {boolean} Indicador de estado de sincronización */
+let isSyncing = false;
 
 /* ============================================================================
    CONSTANTES DE CONFIGURACIÓN DE NEGOCIO
@@ -321,13 +331,115 @@ function fijarSeleccion(nombre, uid) {
    ============================================================================ */
 
 /**
- * Carga todos los ingresos del usuario actual desde Firestore
- * Ordena por fecha descendente
+ * Configura listener en tiempo real para ingresos del usuario
+ * Sincroniza automáticamente en todos los dispositivos
+ * Con polling de respaldo cada 30 segundos
  * @async
  * @private
  */
-async function cargarDatos() {
+function cargarDatos() {
     if (!usuarioApp) return;
+
+    // Limpiar listener anterior si existe
+    if (unsubscribeFromIngresos) {
+        unsubscribeFromIngresos();
+    }
+
+    try {
+        const q = query(
+            collection(db, "ingresos"),
+            where("uid", "==", usuarioApp.uid),
+            orderBy("fecha", "desc")
+        );
+
+        // Listener en tiempo real (ideal, pero puede desconectarse)
+        unsubscribeFromIngresos = onSnapshot(
+            q,
+            (snapshot) => {
+                // Éxito: Actualizar datos
+                datosLocales = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                actualizarUI();
+                calcularRankingGlobal();
+                actualizarIndicadorSincronizacion(true);
+            },
+            (error) => {
+                // Error: Usar polling como respaldo
+                console.warn("Listener desconectado, usando polling de respaldo:", error);
+                actualizarIndicadorSincronizacion(false);
+                iniciarPollingRespaldo();
+            }
+        );
+
+        // Iniciar polling automático como respaldo (cada 30 seg)
+        iniciarPollingRespaldo();
+
+    } catch (error) {
+        console.error("Error configurando listener de datos:", error);
+        actualizarIndicadorSincronizacion(false);
+    }
+}
+
+/**
+ * Inicia polling automático cada 30 segundos como respaldo
+ * Se detiene si el listener en tiempo real está funcionando
+ * @private
+ */
+function iniciarPollingRespaldo() {
+    if (pollingInterval) return; // Ya está corriendo
+
+    pollingInterval = setInterval(async () => {
+        if (!usuarioApp) return;
+
+        try {
+            const q = query(
+                collection(db, "ingresos"),
+                where("uid", "==", usuarioApp.uid),
+                orderBy("fecha", "desc")
+            );
+
+            const snapshot = await getDocs(q);
+            const nuevosDatos = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Actualizar solo si hay cambios (comparar longitud o datos)
+            if (JSON.stringify(nuevosDatos) !== JSON.stringify(datosLocales)) {
+                datosLocales = nuevosDatos;
+                actualizarUI();
+                calcularRankingGlobal();
+            }
+        } catch (error) {
+            console.warn("Error en polling de respaldo:", error);
+        }
+    }, 30000); // Cada 30 segundos
+}
+
+/**
+ * Detiene el polling automático
+ * @private
+ */
+function detenerPollingRespaldo() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
+}
+
+/**
+ * Sincronización manual forzada (botón "Sincronizar")
+ * Útil cuando el usuario sospecha que los datos no están actualizados
+ * @async
+ * @global
+ */
+window.sincronizarAhora = async () => {
+    if (isSyncing) return; // Evitar múltiples sincronizaciones
+
+    isSyncing = true;
+    actualizarIndicadorSincronizacion(false, true);
 
     try {
         const q = query(
@@ -344,10 +456,58 @@ async function cargarDatos() {
 
         actualizarUI();
         calcularRankingGlobal();
+        actualizarIndicadorSincronizacion(true);
+
+        // Mostrar confirmación
+        Swal.fire({
+            title: 'Sincronizado',
+            text: 'Los datos se han actualizado correctamente',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+        });
     } catch (error) {
-        console.error("Error cargando datos:", error);
+        console.error("Error sincronizando:", error);
+        actualizarIndicadorSincronizacion(false);
+        Swal.fire('Error', 'No se pudo sincronizar. Intenta más tarde.', 'error');
+    } finally {
+        isSyncing = false;
     }
 }
+
+/**
+ * Actualiza el indicador visual de estado de sincronización
+ * @param {boolean} sincronizado - True si está sincronizado
+ * @param {boolean} sincronizando - True si está sincronizando
+ * @private
+ */
+function actualizarIndicadorSincronizacion(sincronizado = true, sincronizando = false) {
+    const badge = document.getElementById('syncBadge');
+    if (!badge) return;
+
+    if (sincronizando) {
+        badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+        badge.className = 'badge bg-warning ms-2';
+    } else if (sincronizado) {
+        badge.innerHTML = '<i class="fas fa-check-circle"></i> Actualizado';
+        badge.className = 'badge bg-success ms-2';
+    } else {
+        badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Desconectado';
+        badge.className = 'badge bg-danger ms-2';
+    }
+}
+
+/**
+ * Limpia los listeners al desloguear
+ * @global
+ */
+window.limpiarListeners = () => {
+    if (unsubscribeFromIngresos) {
+        unsubscribeFromIngresos();
+        unsubscribeFromIngresos = null;
+    }
+    detenerPollingRespaldo();
+};
 
 /**
  * Guarda un nuevo ingreso (propina) en Firestore

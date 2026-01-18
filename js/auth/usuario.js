@@ -58,7 +58,13 @@ if (btnLogin) {
  * Cierra la sesión del usuario actual
  * @global
  */
-window.logout = () => signOut(auth);
+window.logout = () => {
+    // Limpiar listeners de sincronización
+    if (window.limpiarListeners) {
+        window.limpiarListeners();
+    }
+    signOut(auth);
+};
 
 /* ============================================================================
    LISTENER DE ESTADO DE AUTENTICACIÓN
