@@ -9,7 +9,8 @@ Aplicación web moderna para que colaboradores rastreen, visualicen y gestionen 
 ## Características
 
 - **Seguro**: Autenticación con Google, validación completa, sanitización XSS
-- **Análitico**: Gráficos en tiempo real, ranking global, proyecciones de pago
+- **Enfocado**: Estado del mes actual, balance anual opcional y desglose del historial
+- **Pagos**: Métodos de efectivo, tarjeta y digital; comisión de tarjeta configurable
 - **Responsive**: Funciona en móvil, tablet y desktop
 - **Dark Mode**: Tema oscuro/claro con persistencia
 - **Rápido**: Optimizado con debounce, caching, 75% menos requests
@@ -131,15 +132,7 @@ git status
 
 ### Testing
 
-Abrir `docs/SECURITY_TESTING_SUITE.js` para 20 casos de prueba detallados.
-
-**Quick test:**
-```javascript
-// En DevTools Console:
-validarNombre('Juan')    // true
-validarNombre('<img>')   // false
-escapeHtml('<script>')   // &lt;script&gt;
-```
+No hay un runner automatizado configurado. Para verificar la app, iniciar sesión y probar el registro de efectivo, tarjeta y pago digital; revisar el resumen mensual, el balance anual plegable y el historial por mes/día. La suite en `docs/SECURITY_TESTING_SUITE.js` documenta la versión histórica 1.1.0 y no representa los flujos actuales.
 
 ## Deployment
 

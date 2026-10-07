@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Portal del Colaborador - Mediterráneo">
     <meta name="theme-color" content="#D32F2F">
-    <title>Mediterráneo | Portal Colaborador</title>
+    <title>Mediterráneo | Portal Colaborador</title>    
 
     <!-- Favicon: Logo oficial de Mediterráneo -->
     <link rel="icon" type="image/png" href="https://images.rappi.pe/restaurants_logo/medtii-1566401614403-1567615042359-1569449064970-1569884397109-1764897126662.png">
@@ -70,217 +70,180 @@
         </button>
 
         <!-- Copyright -->
-        <p class="mt-4 small text-muted-adaptive">© 2025 Mediterráneo</p>
+        <p class="mt-4 small text-muted-adaptive">© 2026 Mediterráneo</p>
     </div>
 </div>
-
+    
 <!-- ============================================================================
      CONTENEDOR PRINCIPAL DEL DASHBOARD
      ============================================================================ -->
-<div id="appContainer" class="container-fluid dashboard-container d-none" style="max-width: 1000px; padding-bottom: 80px;">
+<div id="appContainer" class="container-fluid dashboard-container d-none">
 
     <!-- ========================================================================
          HEADER: Título y Perfil de Usuario
          ======================================================================== -->
-    <div class="dashboard-header d-flex justify-content-between align-items-center mb-4 pt-4 flex-wrap gap-3">
-        <div>
-            <h4 class="fw-bold m-0 text-adaptive">Mis Ingresos</h4>
-            <small class="text-muted-adaptive">Resumen de Propinas</small>
+    <header class="dashboard-header">
+        <div class="dashboard-brand">
+            <span class="dashboard-eyebrow">MEDITERRÁNEO · COLABORADORES</span>
+            <h1>Mis propinas</h1>
+            <p>Un vistazo claro a tus ingresos.</p>
         </div>
-
-        <!-- Zona de usuario y logout -->
-        <div class="d-flex align-items-center gap-2 gap-md-3">
+        <div class="dashboard-account">
             <div class="user-pill">
-                <img id="userPhoto" src="" alt="User" loading="lazy">
+                <img id="userPhoto" src="" alt="Foto de perfil" loading="lazy">
                 <span id="userName" class="user-name-text">Usuario</span>
             </div>
-            <button onclick="logout()" class="btn btn-sm text-danger" title="Cerrar Sesión">
-                <i class="fas fa-sign-out-alt fa-lg"></i>
+            <button onclick="logout()" class="logout-button" title="Cerrar sesión" aria-label="Cerrar sesión">
+                <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
-    </div>
+    </header>
 
-    <!-- ========================================================================
-         SECCIÓN 1: GRÁFICO Y PAGO DE QUINCENA (Col-6 Right)
-         ======================================================================== -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-6 order-md-2">
-            <div class="glass-card p-4 h-100">
-                <!-- Filtros de período -->
-                <div class="d-flex justify-content-between align-items-start align-items-sm-center mb-3 flex-wrap gap-2">
-                    <div>
-                        <h6 class="fw-bold m-0 text-muted-adaptive text-uppercase small ls-1" style="letter-spacing: 1px;">Balance Total</h6>
-                    </div>
-                    <div class="btn-group-custom">
-                        <button class="btn btn-filter active" id="btnDia">Hoy</button>
-                        <button class="btn btn-filter" id="btnMes">Mes</button>
-                        <button class="btn btn-filter" id="btnAno">Año</button>
-                    </div>
-                </div>
+    <nav class="dashboard-tabs" role="tablist" aria-label="Secciones del dashboard">
+        <button class="dashboard-tab is-active" id="tab-overview" type="button" role="tab" aria-selected="true" aria-controls="panel-overview" tabindex="0" data-dashboard-tab="overview">
+            <i class="fas fa-chart-pie" aria-hidden="true"></i><span>Resumen</span>
+        </button>
+        <button class="dashboard-tab" id="tab-register" type="button" role="tab" aria-selected="false" aria-controls="panel-register" tabindex="-1" data-dashboard-tab="register">
+            <i class="fas fa-plus-circle" aria-hidden="true"></i><span>Registrar</span>
+        </button>
+        <button class="dashboard-tab" id="tab-activity" type="button" role="tab" aria-selected="false" aria-controls="panel-activity" tabindex="-1" data-dashboard-tab="activity">
+            <i class="fas fa-list-ul" aria-hidden="true"></i><span>Actividad</span>
+        </button>
+    </nav>
 
-                <!-- Navegación de fechas -->
-                <div class="d-flex justify-content-between align-items-center mb-4 p-3 rounded-3" style="background: rgba(128,128,128,0.03); border: 1px solid var(--border-color); gap: 2px;">
-                    <button class="btn btn-sm icon-adaptive" onclick="cambiarFecha(-1)" title="Fecha anterior">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <span id="labelFechaActual" class="fw-bold flex-grow-1 text-center" style="color: var(--brand-red); min-width: 150px;">Hoy</span>
-                    <button class="btn btn-sm icon-adaptive" onclick="cambiarFecha(1)" title="Fecha siguiente">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-
-                <!-- Gráfico doughnut -->
-                <div class="chart-container mb-3">
-                    <canvas id="miGrafico"></canvas>
-                    <div class="chart-center-text">
-                        <small class="d-block text-muted-adaptive">Acumulado</small>
-                        <span class="fw-bold fs-2 text-adaptive" id="totalLabel">S/0</span>
-                    </div>
-                </div>
-
-                <!-- Tarjeta de resumen de pago con comisión -->
-                <div class="payment-summary-card">
-                    <div class="payment-header">
-                        <div class="payment-title">
-                            <i class="fas fa-credit-card"></i>
-                            <span>Pago Quincena (Tarjetas)</span>
+    <main class="dashboard-panels">
+        <section class="dashboard-panel is-active" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" data-dashboard-panel="overview">
+            <div class="overview-grid">
+                <section class="dashboard-section balance-section" aria-labelledby="balance-title">
+                    <div class="section-heading">
+                        <div>
+                            <span class="section-kicker">MES SELECCIONADO</span>
+                            <h2 id="balance-title">Estado del mes</h2>
                         </div>
-                        <span class="badge-commission" id="lblPorcentajeNiubiz">-4.50%</span>
+                        <div class="year-switcher" aria-label="Cambiar mes">
+                            <button type="button" class="year-button" onclick="cambiarFecha(-1)" title="Mes anterior" aria-label="Mes anterior">
+                                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                            </button>
+                            <span id="labelFechaActual">Este mes</span>
+                            <button type="button" class="year-button" onclick="cambiarFecha(1)" title="Mes siguiente" aria-label="Mes siguiente">
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </div>
+                    <div class="chart-container">
+                        <canvas id="miGrafico" aria-label="Distribución de propinas por método de pago"></canvas>
+                        <div class="chart-center-text">
+                            <small class="d-block text-muted-adaptive">Acumulado</small>
+                            <span class="fw-bold fs-2 text-adaptive" id="totalLabel">S/0.00</span>
+                        </div>
+                    </div>
+                </section>
 
+                <section class="dashboard-section payout-section" aria-labelledby="payout-title">
+                    <div class="section-heading">
+                        <div>
+                            <span class="section-kicker">ESTIMADO</span>
+                            <h2 id="payout-title">Pago por tarjeta</h2>
+                        </div>
+                        <i class="fas fa-credit-card section-heading-icon" aria-hidden="true"></i>
+                    </div>
+                    <div class="commission-note">Comisión aplicada <span class="badge-commission" id="lblPorcentajeNiubiz">-3.50%</span></div>
                     <div class="payment-body">
                         <div class="payment-row">
-                            <span class="payment-label">Bruto Tarjetas:</span>
+                            <span class="payment-label">Bruto en tarjetas</span>
                             <span class="payment-value text-adaptive" id="lblBrutoTarjeta">S/0.00</span>
                         </div>
                         <div class="payment-row">
-                            <span class="payment-label text-danger">Comisión:</span>
+                            <span class="payment-label">Comisión</span>
                             <span class="payment-value text-danger" id="lblComisionNiubiz">- S/0.00</span>
                         </div>
                         <div class="payment-divider"></div>
                         <div class="payment-row payment-final">
-                            <span class="payment-label-final">A Depositar:</span>
+                            <span class="payment-label-final">Neto estimado</span>
                             <span class="payment-value-final text-adaptive" id="lblNetoDeposito">S/0.00</span>
                         </div>
                     </div>
-                </div>
+                    <p class="payout-footnote">El cálculo considera únicamente los ingresos registrados como tarjeta.</p>
+                </section>
             </div>
-        </div>
 
-        <!-- ====================================================================
-             SECCIÓN 2: FORMULARIO DE REGISTRO (Col-6 Left)
-             ==================================================================== -->
-        <div class="col-md-6 order-md-1">
-            <div class="glass-card p-4 h-100">
-                <h5 class="fw-bold mb-4 text-adaptive">Registrar Propina</h5>
+            <details class="annual-summary">
+                <summary>
+                    <span><span class="section-kicker">CONSULTA SECUNDARIA</span><strong>Resumen anual</strong></span>
+                    <span class="annual-summary-values"><span id="annualTotal">S/0.00</span><span id="annualCount">0 registros</span><i class="fas fa-chevron-down" aria-hidden="true"></i></span>
+                </summary>
+                <div class="annual-summary-content">
+                    <div class="annual-year-control" aria-label="Cambiar año del historial">
+                        <button type="button" class="year-button" onclick="cambiarAnio(-1)" title="Año anterior" aria-label="Año anterior"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
+                        <span id="annualYearLabel">2026</span>
+                        <button type="button" class="year-button" onclick="cambiarAnio(1)" title="Año siguiente" aria-label="Año siguiente"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                    </div>
+                    <div class="annual-type-summary" id="annualTypeSummary"></div>
+                </div>
+            </details>
+        </section>
 
-                <!-- Tarjetas de método de pago -->
-                <div class="row g-2 mb-4">
-                    <div class="col-6 col-sm-3">
-                        <div class="method-card" data-tipo="Efectivo" title="Efectivo">
-                            <i class="fas fa-coins"></i>
-                            <span>Efectivo</span>
-                        </div>
+        <section class="dashboard-panel" id="panel-register" role="tabpanel" aria-labelledby="tab-register" data-dashboard-panel="register" hidden>
+            <section class="dashboard-section register-section" aria-labelledby="register-title">
+                <div class="section-heading">
+                    <div>
+                        <span class="section-kicker">NUEVO INGRESO</span>
+                        <h2 id="register-title">Registrar propina</h2>
                     </div>
-                    <div class="col-6 col-sm-3">
-                        <div class="method-card" data-tipo="Tarjeta" title="Tarjeta de Crédito/Débito">
-                            <i class="fas fa-credit-card"></i>
-                            <span>Tarjeta</span>
-                        </div>
-                    </div>
-                    <div class="col-6 col-sm-3">
-                        <div class="method-card" data-tipo="Corredor" title="Apoyo de Corredor">
-                            <i class="fas fa-running"></i>
-                            <span>Corredor</span>
-                        </div>
-                    </div>
-                    <div class="col-6 col-sm-3">
-                        <div class="method-card" data-tipo="Yape/Plin" title="Pago Digital">
-                            <i class="fas fa-qrcode"></i>
-                            <span>Digital</span>
-                        </div>
-                    </div>
+                    <i class="fas fa-coins section-heading-icon" aria-hidden="true"></i>
                 </div>
 
-                <!-- Formulario de entrada -->
-                <div id="form-section">
-                    <!-- Input de fecha -->
+                <div class="method-grid" role="group" aria-label="Método de pago">
+                    <button type="button" class="method-card" data-tipo="Efectivo" title="Efectivo" aria-pressed="false">
+                        <i class="fas fa-coins" aria-hidden="true"></i><span>Efectivo</span>
+                    </button>
+                    <button type="button" class="method-card" data-tipo="Tarjeta" title="Tarjeta de crédito o débito" aria-pressed="false">
+                        <i class="fas fa-credit-card" aria-hidden="true"></i><span>Tarjeta</span>
+                    </button>
+                    <button type="button" class="method-card" data-tipo="Yape/Plin" title="Pago digital" aria-pressed="false">
+                        <i class="fas fa-qrcode" aria-hidden="true"></i><span>Digital</span>
+                    </button>
+                </div>
+
+                <div class="form-grid" id="form-section">
                     <div class="mb-3">
+                        <label class="form-label-custom" for="inputFecha">Fecha</label>
                         <div class="input-group-custom">
-                            <span class="currency"><i class="far fa-calendar"></i></span>
+                            <span class="currency"><i class="far fa-calendar" aria-hidden="true"></i></span>
                             <input type="date" id="inputFecha" class="form-control-custom" required>
                         </div>
                     </div>
-
-                    <!-- Input de monto -->
                     <div class="mb-3">
+                        <label class="form-label-custom" for="inputMonto">Monto recibido</label>
                         <div class="input-group-custom">
                             <span class="currency">S/</span>
-                            <input 
-                                type="number" 
-                                id="inputMonto" 
-                                class="form-control-custom" 
-                                placeholder="0" 
-                                min="1" 
-                                max="999"
-                                oninput="if(this.value.length > 3) this.value = this.value.slice(0,3);"
-                                required>
+                            <input type="number" id="inputMonto" class="form-control-custom" placeholder="0.00" min="1" max="999" step="0.01" inputmode="decimal" required>
                         </div>
                     </div>
+                    <button id="btnGuardar" class="btn-action"><i class="fas fa-check" aria-hidden="true"></i><span>Guardar ingreso</span></button>
+                </div>
+            </section>
+        </section>
 
-                    <!-- Búsqueda de compañero (oculto por defecto, mostrado si es Corredor) -->
-                    <div class="mb-3 d-none fade-in" id="divCompanero">
-                        <label class="small text-muted-adaptive ms-2 mb-1">Nombre del Compañero(a):</label>
-                        <div class="position-relative">
-                            <div class="input-group-custom">
-                                <span class="currency"><i class="fas fa-search"></i></span>
-                                <input type="text" id="inputSearchCompanero" class="form-control-custom" 
-                                       placeholder="Buscar compañero..." autocomplete="off" 
-                                       style="padding-left: 50px;">
-                                <button id="btnClearSearch" class="btn btn-sm text-muted position-absolute end-0 top-50 translate-middle-y me-3 d-none" 
-                                        style="z-index: 10; border: none; background: none; cursor: pointer;">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                            <!-- Dropdown con resultados de búsqueda -->
-                            <div id="searchResults" class="search-dropdown d-none"></div>
+        <section class="dashboard-panel" id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" data-dashboard-panel="activity" hidden>
+            <div class="activity-grid">
+                <section class="dashboard-section history-section" aria-labelledby="history-title">
+                    <div class="section-heading">
+                        <div>
+                            <span class="section-kicker">TUS REGISTROS</span>
+                            <h2 id="history-title">Historial</h2>
                         </div>
-                        <!-- Campos ocultos para guardar datos del compañero seleccionado -->
-                        <input type="hidden" id="selectedCompaneroUid">
-                        <input type="hidden" id="finalCompaneroName">
+                        <span id="labelModoHistorial" class="history-year"></span>
                     </div>
-
-                    <!-- Botón de guardado -->
-                    <button id="btnGuardar" class="btn-action">GUARDAR INGRESO</button>
-                </div>
+                    <div class="table-responsive">
+                        <table class="table table-borderless m-0 bg-transparent text-adaptive">
+                            <tbody id="tablaHistorial"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
-        </div>
-    </div>
-
-    <!-- ========================================================================
-         SECCIÓN 3: RANKING GLOBAL Y HISTORIAL RECIENTE
-         ======================================================================== -->
-    <div class="row g-4">
-        <!-- Ranking Global de Apoyos (Corredores) -->
-        <div class="col-md-6">
-            <div class="glass-card p-4 h-100">
-                <h6 class="text-muted-adaptive fw-bold small mb-3">Ranking Global de Apoyo</h6>
-                <ul class="list-unstyled m-0" id="listaRanking"></ul>
-            </div>
-        </div>
-
-        <!-- Historial Reciente -->
-        <div class="col-md-6">
-            <div class="glass-card p-4 h-100">
-                <h6 class="text-muted-adaptive fw-bold small mb-3">Historial Reciente</h6>
-                <div class="table-responsive">
-                    <table class="table table-borderless m-0 bg-transparent text-adaptive">
-                        <tbody id="tablaHistorial"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+        </section>
+    </main>
 </div>
 
 <!-- ============================================================================

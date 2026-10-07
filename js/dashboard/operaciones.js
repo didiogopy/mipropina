@@ -7,14 +7,12 @@
  *              - CRUD de registros (crear, editar, eliminar)
  *              - Visualización en gráficos y tablas
  *              - Filtrado por período (día, mes, año)
- *              - Ranking global de colaboradores
- *              - Búsqueda de compañeros
  * 
  * Responsabilidades:
  * - Inicializar dashboard y configurar eventos
  * - Gestionar estado de la aplicación (usuarioApp, datos locales)
  * - Operaciones CRUD en Firestore
- * - Renderizado de UI (gráficos, historial, ranking)
+ * - Renderizado de UI (gráficos e historial)
  * - Validación de datos
  * 
  * @module dashboard/operaciones
@@ -30,7 +28,6 @@ import {
     where,
     orderBy,
     getDocs,
-    limit,
     onSnapshot
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
@@ -46,17 +43,11 @@ let usuarioApp = null;
 /** @type {Array} Lista de ingresos (propinas) del usuario actual */
 let datosLocales = [];
 
-/** @type {Array} Directorio global de usuarios (para buscador) */
-let listaUsuariosSistema = [];
-
 /** @type {Object} Instancia actual del gráfico Chart.js */
 let miGrafico = null;
 
 /** @type {Date} Fecha de visualización seleccionada */
 let fechaVisualizacion = new Date();
-
-/** @type {string} Filtro activo ('dia', 'mes', 'ano') */
-let filtroActual = 'dia';
 
 /** @type {Function} Unsubscribe function para listener de Firestore */
 let unsubscribeFromIngresos = null;
@@ -71,64 +62,12 @@ let isSyncing = false;
    CONSTANTES DE CONFIGURACIÓN DE NEGOCIO
    ============================================================================ */
 
-/** Porcentaje de comisión que aplica Niubiz sobre pagos con tarjeta: 4.5% */
-const TASA_NIUBIZ = 0.045;
+/** Porcentaje de comisión que aplica sobre pagos con tarjeta: 3.5% */
+const TASA_NIUBIZ = 0.035;
 
 /* ============================================================================
    1. UTILIDADES DE SEGURIDAD
    ============================================================================ */
-
-/**
- * Escapa caracteres especiales HTML para prevenir XSS
- * Convierte: <, >, &, ", ' en sus entidades HTML
- * @param {string} texto - Texto a escapar
- * @returns {string} Texto seguro para HTML
- * @private
- */
-function escapeHtml(texto) {
-    if (!texto || typeof texto !== 'string') return '';
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return texto.replace(/[&<>"']/g, char => map[char]);
-}
-
-/**
- * Valida que un nombre sea válido (evita inyecciones)
- * Permite letras, números, espacios, guiones, puntos
- * @param {string} nombre - Nombre a validar
- * @returns {boolean} True si es válido
- * @private
- */
-function validarNombre(nombre) {
-    if (!nombre || typeof nombre !== 'string') return false;
-    if (nombre.trim().length < 2 || nombre.trim().length > 50) return false;
-    return /^[a-zA-Z0-9\s\-\.áéíóúñ]+$/i.test(nombre.trim());
-}
-
-/**
- * Crea un debounce de una función
- * Útil para búsqueda, resize, input, etc.
- * @param {Function} func - Función a ejecutar
- * @param {number} wait - Milisegundos de espera
- * @returns {Function} Función debounceada
- * @private
- */
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
 
 /* ============================================================================
    2. INICIALIZACIÓN
@@ -145,23 +84,6 @@ export function iniciarDashboard(user) {
     setFechaHoyInput();
     configurarEventos();
     cargarDatos();
-    cargarUsuariosSistema();
-}
-
-/**
- * Carga el directorio completo de usuarios del sistema
- * Usado para el buscador de compañeros
- * @async
- * @private
- */
-async function cargarUsuariosSistema() {
-    try {
-        const q = query(collection(db, "usuarios"), limit(50));
-        const snapshot = await getDocs(q);
-        listaUsuariosSistema = snapshot.docs.map(d => d.data());
-    } catch (error) {
-        console.error("Error cargando directorio de usuarios:", error);
-    }
 }
 
 /* ============================================================================
@@ -170,7 +92,7 @@ async function cargarUsuariosSistema() {
 
 /**
  * Configura todos los event listeners del dashboard
- * Incluye: selección de métodos, filtros, navegación de fechas, buscador
+ * Incluye: selección de métodos, navegación de años, buscador
  * @private
  */
 function configurarEventos() {
@@ -185,145 +107,12 @@ function configurarEventos() {
     btnOld.parentNode.replaceChild(btnNew, btnOld);
     btnNew.addEventListener('click', guardarPropina);
 
-    /* ---- Filtros de Período (Día, Mes, Año) ---- */
-    document.querySelectorAll('.btn-filter').forEach(btn => {
-        btn.addEventListener('click', handleFilterClick);
-    });
-
-    /* ---- Navegación de Fechas ---- */
+    /* ---- Navegación de Años ---- */
     window.cambiarFecha = (delta) => {
-        if (filtroActual === 'dia') {
-            fechaVisualizacion.setDate(fechaVisualizacion.getDate() + delta);
-        } else if (filtroActual === 'mes') {
-            fechaVisualizacion.setMonth(fechaVisualizacion.getMonth() + delta);
-        } else if (filtroActual === 'ano') {
-            fechaVisualizacion.setFullYear(fechaVisualizacion.getFullYear() + delta);
-        }
+        fechaVisualizacion.setFullYear(fechaVisualizacion.getFullYear() + delta);
         actualizarUI();
     };
 
-    /* ---- BUSCADOR DE COMPAÑEROS (Sistema Híbrido con Debounce) ---- */
-    const inputSearch = document.getElementById('inputSearchCompanero');
-    const btnClear = document.getElementById('btnClearSearch');
-
-    // Aplicar debounce de 300ms para evitar búsquedas excesivas
-    const debouncedSearch = debounce((e) => filtrarUsuarios(e.target.value), 300);
-    inputSearch.addEventListener('input', debouncedSearch);
-
-    btnClear.addEventListener('click', () => {
-        inputSearch.value = '';
-        document.getElementById('selectedCompaneroUid').value = '';
-        document.getElementById('finalCompaneroName').value = '';
-        inputSearch.disabled = false;
-        btnClear.classList.add('d-none');
-        document.getElementById('searchResults').classList.add('d-none');
-        inputSearch.focus();
-    });
-}
-
-/* ============================================================================
-   3. LÓGICA DEL BUSCADOR
-   ============================================================================ */
-
-/**
- * Filtra usuarios según el texto ingresado
- * Muestra dropdown con coincidencias + opción de agregar manual
- * SANITIZACIÓN: Escapar displayName para prevenir XSS
- * @param {string} texto - Texto a buscar en names de usuarios
- * @private
- */
-function filtrarUsuarios(texto) {
-    const dropdown = document.getElementById('searchResults');
-
-    if (texto.length < 1) {
-        dropdown.classList.add('d-none');
-        return;
-    }
-
-    // Buscar coincidencias en directorio
-    const coincidencias = listaUsuariosSistema.filter(u =>
-        u.displayName.toLowerCase().includes(texto.toLowerCase()) &&
-        u.uid !== usuarioApp.uid
-    );
-
-    let html = '';
-
-    // Renderizar usuarios encontrados - ESCAPAR displayName para XSS
-    coincidencias.forEach(u => {
-        const displayNameSeguro = escapeHtml(u.displayName);
-        const photoUrl = escapeHtml(u.photoURL || '');
-        html += `
-        <div class="user-item" onclick="seleccionarUsuario('${u.uid}', '${displayNameSeguro}')">
-            <img src="${photoUrl}" alt="${displayNameSeguro}">
-            <div class="user-item-info">
-                <span class="user-item-name">${displayNameSeguro}</span>
-                <span class="user-item-badge text-success"><i class="fas fa-check-circle"></i> Registrado</span>
-            </div>
-        </div>`;
-    });
-
-    // Agregar opción de registro manual - VALIDAR Y ESCAPAR
-    const textoSeguro = escapeHtml(texto.substring(0, 50)); // Limitar a 50 caracteres
-    if (validarNombre(texto)) {
-        html += `
-        <div class="user-item add-manual-item" onclick="seleccionarManual('${textoSeguro}')">
-            <i class="fas fa-plus"></i>
-            <div class="user-item-info">
-                <span class="user-item-name">Usar "${textoSeguro}"</span>
-                <span class="user-item-badge">Como externo</span>
-            </div>
-        </div>`;
-    }
-
-    dropdown.innerHTML = html;
-    dropdown.classList.remove('d-none');
-}
-
-/**
- * Selecciona un usuario del directorio
- * @param {string} uid - UID del usuario en Firebase
- * @param {string} nombre - Nombre del usuario (ya escapado en filtrarUsuarios)
- * @global
- */
-window.seleccionarUsuario = (uid, nombre) => {
-    // Validar nombre antes de fijar selección
-    if (!validarNombre(nombre)) {
-        Swal.fire('Error', 'Nombre de compañero inválido', 'error');
-        return;
-    }
-    fijarSeleccion(nombre, uid);
-};
-
-/**
- * Selecciona un usuario ingresado manualmente
- * @param {string} nombre - Nombre ingresado manualmente
- * @global
- */
-window.seleccionarManual = (nombre) => {
-    // Validar nombre
-    if (!validarNombre(nombre)) {
-        Swal.fire('Error', 'Nombre debe tener 2-50 caracteres válidos', 'error');
-        return;
-    }
-    const nombreCapitalizado = nombre.trim().replace(/\b\w/g, l => l.toUpperCase());
-    fijarSeleccion(nombreCapitalizado, '');
-};
-
-/**
- * Fija la selección del compañero en los campos ocultos
- * Desactiva el input y muestra botón de limpiar
- * @param {string} nombre - Nombre del compañero
- * @param {string} uid - UID del compañero (vacío si es manual)
- * @private
- */
-function fijarSeleccion(nombre, uid) {
-    const inputSearch = document.getElementById('inputSearchCompanero');
-    document.getElementById('selectedCompaneroUid').value = uid;
-    document.getElementById('finalCompaneroName').value = nombre;
-    inputSearch.value = nombre;
-    inputSearch.disabled = true;
-    document.getElementById('btnClearSearch').classList.remove('d-none');
-    document.getElementById('searchResults').classList.add('d-none');
 }
 
 /* ============================================================================
@@ -362,7 +151,6 @@ function cargarDatos() {
                     ...doc.data()
                 }));
                 actualizarUI();
-                calcularRankingGlobal();
                 actualizarIndicadorSincronizacion(true);
             },
             (error) => {
@@ -410,7 +198,6 @@ function iniciarPollingRespaldo() {
             if (JSON.stringify(nuevosDatos) !== JSON.stringify(datosLocales)) {
                 datosLocales = nuevosDatos;
                 actualizarUI();
-                calcularRankingGlobal();
             }
         } catch (error) {
             console.warn("Error en polling de respaldo:", error);
@@ -455,7 +242,6 @@ window.sincronizarAhora = async () => {
         }));
 
         actualizarUI();
-        calcularRankingGlobal();
         actualizarIndicadorSincronizacion(true);
 
         // Mostrar confirmación
@@ -522,25 +308,13 @@ async function guardarPropina() {
     const metodo = document.querySelector('.method-card.active')?.getAttribute('data-tipo');
     const fechaInput = document.getElementById('inputFecha').value;
 
-    const companeroName = document.getElementById('finalCompaneroName').value;
-    const companeroUid = document.getElementById('selectedCompaneroUid').value;
-
     /* ---- VALIDACIÓN ---- */
     if (!metodo || isNaN(monto) || monto <= 0) {
         return Swal.fire('Error', 'Ingresa un monto válido.', 'warning');
     }
 
-    if (metodo === 'Corredor') {
-        if (monto > 50) {
-            return Swal.fire('Tope Excedido', 'El apoyo de corredor no debe superar S/50.', 'warning');
-        }
-        if (!companeroName || !validarNombre(companeroName)) {
-            return Swal.fire('Requerido', 'Nombre de compañero inválido (2-50 caracteres).', 'warning');
-        }
-    } else {
-        if (monto > 999) {
-            return Swal.fire('Error', 'Monto excede el límite permitido.', 'error');
-        }
+    if (monto > 999) {
+        return Swal.fire('Error', 'Monto excede el límite permitido.', 'error');
     }
 
     if (!fechaInput || new Date(fechaInput) > new Date()) {
@@ -561,8 +335,6 @@ async function guardarPropina() {
             uid: usuarioApp.uid,
             monto: monto,
             tipo: metodo,
-            companero: metodo === 'Corredor' ? companeroName : null,
-            companero_uid: (metodo === 'Corredor' && companeroUid) ? companeroUid : null,
             fecha: fechaObj,
             fecha_str: fechaObj.toISOString(),
             timestamp: new Date()
@@ -599,89 +371,6 @@ async function guardarPropina() {
 }
 
 /* ============================================================================
-   5. RANKING GLOBAL
-   ============================================================================ */
-
-/**
- * Calcula y muestra el ranking global de apoyos (propinas de corredor)
- * Muestra top 5 con montos acumulados
- * @async
- * @private
- */
-async function calcularRankingGlobal() {
-    const lista = document.getElementById('listaRanking');
-    lista.innerHTML = '<li class="text-center small py-3"><i class="fas fa-spinner fa-spin"></i> Cargando top...</li>';
-
-    try {
-        /* ---- CARGAR PROPINAS DE CORREDOR ---- */
-        const q = query(
-            collection(db, "ingresos"),
-            where("tipo", "==", "Corredor"),
-            orderBy("fecha", "desc"),
-            limit(200)
-        );
-        const snapshot = await getDocs(q);
-        const todos = snapshot.docs.map(d => d.data());
-
-        /* ---- AGRUPAR POR COMPAÑERO ---- */
-        const donadores = {};
-        todos.forEach(d => {
-            const key = d.companero_uid || d.companero;
-            if (!donadores[key]) {
-                donadores[key] = { nombre: d.companero, monto: 0, foto: null };
-            }
-            donadores[key].monto += d.monto;
-        });
-
-        /* ---- ENRIQUECER CON DATOS DE PERFIL ---- */
-        Object.keys(donadores).forEach(key => {
-            const userReg = listaUsuariosSistema.find(u => u.uid === key);
-            if (userReg) {
-                donadores[key].nombre = userReg.displayName;
-                donadores[key].foto = userReg.photoURL;
-            }
-        });
-
-        /* ---- ORDENAR Y OBTENER TOP 5 ---- */
-        const ranking = Object.values(donadores)
-            .sort((a, b) => b.monto - a.monto)
-            .slice(0, 5);
-
-        /* ---- RENDERIZAR LISTA ---- */
-        lista.innerHTML = '';
-        if (ranking.length === 0) {
-            lista.innerHTML = '<li class="text-center text-adaptive small py-3" style="color: var(--text-main) !important;">Sin donaciones aún</li>';
-            return;
-        }
-
-        ranking.forEach((d, i) => {
-            const colors = ['text-warning', 'text-secondary', 'text-warning'];
-            const icon = i < 3 
-                ? `<i class="fas fa-crown ${colors[i]}"></i>` 
-                : `<span class="small fw-bold text-muted">#${i + 1}</span>`;
-
-            const avatar = d.foto
-                ? `<img src="${d.foto}" class="rank-avatar">`
-                : `<div class="rank-avatar d-inline-flex align-items-center justify-content-center bg-dark text-white small">${d.nombre.charAt(0)}</div>`;
-
-            lista.innerHTML += `
-            <li class="ranking-item">
-                <div class="d-flex align-items-center">
-                    <span class="me-2" style="width:20px; text-align:center;">${icon}</span>
-                    ${avatar}
-                    <span class="fw-bold text-adaptive text-truncate" style="max-width: 120px;">${d.nombre}</span>
-                </div>
-                <span class="badge-status">S/${d.monto.toFixed(0)}</span>
-            </li>`;
-        });
-
-    } catch (error) {
-        console.error("Error calculando ranking:", error);
-        lista.innerHTML = '<li class="text-center small text-danger">Requiere Índice</li>';
-    }
-}
-
-/* ============================================================================
    6. ACTUALIZACIÓN DE UI
    ============================================================================ */
 
@@ -696,12 +385,12 @@ function actualizarUI() {
 
     renderizarGrafico(datosFiltrados);
     renderizarProyeccion(datosFiltrados);
-    renderizarHistorial(datosLocales.slice(0, 10));
+    renderizarHistorial(datosFiltrados);
 }
 
 /**
- * Filtra datos según el período activo (día, mes, año)
- * @returns {Array} Array de datos filtrados
+ * Filtra datos según el período anual
+ * @returns {Array} Array de datos del año actual
  * @private
  */
 function filtrarDatosPorFecha() {
@@ -709,38 +398,30 @@ function filtrarDatosPorFecha() {
 
     return datosLocales.filter(d => {
         const f = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha_str);
-
-        if (filtroActual === 'dia') {
-            return f.toDateString() === ref.toDateString();
-        } else if (filtroActual === 'mes') {
-            return f.getMonth() === ref.getMonth() && f.getFullYear() === ref.getFullYear();
-        } else if (filtroActual === 'ano') {
-            return f.getFullYear() === ref.getFullYear();
-        }
+        return f.getFullYear() === ref.getFullYear();
     });
 }
 
 /**
  * Renderiza el gráfico doughnut con distribución de propinas
- * Muestra: Efectivo, Tarjeta, Corredor, Yape/Plin
+ * Muestra los métodos activos y agrupa registros históricos bajo Otros
  * @param {Array} datos - Datos a visualizar
  * @private
  */
 function renderizarGrafico(datos) {
     const resumen = {
-        'Efectivo': 0,
-        'Tarjeta': 0,
-        'Corredor': 0,
-        'Yape/Plin': 0
+           'Efectivo': 0,
+           'Tarjeta': 0,
+           'Yape/Plin': 0,
+           'Otros': 0
     };
 
     let total = 0;
 
     /* ---- SUMAR DATOS POR TIPO ---- */
     datos.forEach(d => {
-        if (resumen[d.tipo] !== undefined) {
-            resumen[d.tipo] += d.monto;
-        }
+          const tipo = Object.hasOwn(resumen, d.tipo) ? d.tipo : 'Otros';
+          resumen[tipo] += d.monto || 0;
         total += d.monto;
     });
 
@@ -799,65 +480,253 @@ function renderizarProyeccion(datos) {
 }
 
 /**
- * Renderiza la tabla de historial con botones de editar/eliminar
- * @param {Array} lista - Datos a mostrar en historial
+ * Renderiza la tabla de historial anual desglosable
+ * Agrupa por: Mes > Día > Transacciones
+ * @param {Array} lista - Datos del año
  * @private
  */
 function renderizarHistorial(lista) {
     const tabla = document.getElementById('tablaHistorial');
+    const labelModo = document.getElementById('labelModoHistorial');
+    
     if (!tabla) return;
 
-    /* ---- LISTA VACÍA ---- */
     if (lista.length === 0) {
-        tabla.innerHTML = '<tr><td colspan="4"><li class="text-center text-adaptive small py-3" style="color: var(--text-main) !important; list-style: none;">Sin historial aún</li></td></tr>';
+        tabla.innerHTML = '<tr><td colspan="4"><li class="text-center text-adaptive small py-3" style="color: var(--text-main) !important; list-style: none;">Sin propinas</li></td></tr>';
+        if (labelModo) labelModo.innerText = '';
         return;
     }
 
-    tabla.innerHTML = '';
+    if (labelModo) {
+        labelModo.innerText = `${new Date().getFullYear()}`;
+    }
 
-    /* ---- RENDERIZAR FILAS ---- */
-    lista.forEach(d => {
-        /* ---- CONVERTIR FECHA ---- */
-        const fecha = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha_str || d.fecha);
-        const fechaTxt = fecha.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-        /* ---- ICONO SEGÚN TIPO ---- */
-        let iconClass = 'fa-coins';
-        if (d.tipo === 'Tarjeta') iconClass = 'fa-credit-card';
-        if (d.tipo === 'Corredor') iconClass = 'fa-running';
-        if (d.tipo === 'Yape/Plin') iconClass = 'fa-qrcode';
-
-        /* ---- PREPARAR DATOS PARA MODAL (ENCODED) ---- */
-        const dataStr = encodeURIComponent(JSON.stringify({
-            monto: d.monto,
-            tipo: d.tipo,
-            fecha: d.fecha_str.split('T')[0],
-            companero: d.companero || '',
-            companero_uid: d.companero_uid || ''
-        }));
-
-        /* ---- RENDERIZAR FILA ---- */
-        tabla.innerHTML += `
-        <tr>
-            <td width="50">
-                <div style="width:36px; height:36px; background:var(--bg-body); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--text-muted);">
-                    <i class="fas ${iconClass}"></i>
-                </div>
-            </td>
-            <td>
-                <div style="font-weight:600; font-size:0.9rem;">${d.tipo}</div>
-                <div style="font-size:0.75rem; color:var(--text-muted);">${fechaTxt} ${d.companero ? '• ' + d.companero : ''}</div>
-            </td>
-            <td class="text-end" style="font-weight:700;">S/${d.monto.toFixed(2)}</td>
-            <td class="text-end" style="min-width:80px;">
-                <div class="d-flex justify-content-end">
-                    <button onclick="abrirEdicion('${d.id}', '${dataStr}')" class="btn-edit-mini"><i class="fas fa-pen"></i></button>
-                    <button onclick="borrarRegistro('${d.id}')" class="btn-trash-mini"><i class="fas fa-times"></i></button>
-                </div>
-            </td>
-        </tr>`;
-    });
+    tabla.innerHTML = renderizarHistorialPorMes(lista);
 }
+
+/**
+ * Genera HTML del historial agrupado por mes (para "Año") con acordeones anidados
+ * Nivel 1: Mes | Nivel 2: Día dentro del mes
+ * @private
+ */
+function renderizarHistorialPorMes(lista) {
+    const grupos = {};
+    
+    lista.forEach(d => {
+        const fecha = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha_str || d.fecha);
+        const mes = fecha.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        
+        if (!grupos[mes]) grupos[mes] = [];
+        grupos[mes].push(d);
+    });
+
+    let html = '';
+    const mesesOrdenados = Object.keys(grupos).sort((a, b) => {
+        const fechaA = new Date(grupos[a][0].fecha_str);
+        const fechaB = new Date(grupos[b][0].fecha_str);
+        return fechaB - fechaA;
+    });
+
+    mesesOrdenados.forEach((mes, mesIdx) => {
+        const filasMes = grupos[mes];
+        const totalMes = filasMes.reduce((sum, d) => sum + d.monto, 0);
+        const idMes = `accordion-mes-${mesIdx}`;
+
+        // Agrupar dentro del mes por día
+        const diasEnMes = {};
+        filasMes.forEach(d => {
+            const fecha = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha_str || d.fecha);
+            const dia = fecha.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            
+            if (!diasEnMes[dia]) diasEnMes[dia] = [];
+            diasEnMes[dia].push(d);
+        });
+
+        // Header del mes (acordeón nivel 1)
+        html += `
+        <tr class="accordion-header" data-accordion="${idMes}" onclick="toggleAccordion('${idMes}', event)" style="cursor: pointer;">
+            <td colspan="4" style="padding: 12px !important;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-main); text-transform: capitalize;">${mes}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">${filasMes.length} propina${filasMes.length !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-weight: 700; color: var(--text-main);">S/${totalMes.toFixed(2)}</span>
+                        <i class="fas fa-chevron-down accordion-icon" style="color: var(--text-muted); transition: transform 0.3s;"></i>
+                    </div>
+                </div>
+            </td>
+        </tr>
+        `;
+
+        // Procesar cada día dentro del mes
+        const diasOrdenados = Object.keys(diasEnMes).sort((a, b) => {
+            const fechaA = new Date(diasEnMes[a][0].fecha_str);
+            const fechaB = new Date(diasEnMes[b][0].fecha_str);
+            return fechaB - fechaA;
+        });
+
+        diasOrdenados.forEach((dia, diaIdx) => {
+            const filasDelDia = diasEnMes[dia];
+            const totalDia = filasDelDia.reduce((sum, d) => sum + d.monto, 0);
+            const idDia = `accordion-mes-${mesIdx}-dia-${diaIdx}`;
+
+            filasDelDia.sort((a, b) => {
+                const fechaA = a.fecha && a.fecha.toDate ? a.fecha.toDate() : new Date(a.fecha_str || a.fecha);
+                const fechaB = b.fecha && b.fecha.toDate ? b.fecha.toDate() : new Date(b.fecha_str || b.fecha);
+                return fechaB - fechaA;
+            });
+
+            // Sub-header del día (acordeón nivel 2)
+            html += `
+            <tr class="accordion-item accordion-item-${idMes} accordion-header-sub" data-accordion="${idDia}" onclick="toggleAccordion('${idDia}', event)" style="cursor: pointer;">
+                <td colspan="4" style="padding: 10px 12px !important; margin-left: 16px; background: rgba(211, 47, 47, 0.02); border-left: 3px solid rgba(211, 47, 47, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; font-size: 0.9rem; color: var(--text-main);">${dia}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 600; color: var(--text-main);">S/${totalDia.toFixed(2)}</span>
+                            <i class="fas fa-chevron-down accordion-icon-sub" style="color: var(--text-muted); transition: transform 0.3s; font-size: 0.8rem;"></i>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            `;
+
+            // Filas individuales del día
+            filasDelDia.forEach((d, filasIdx) => {
+                const fecha = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha_str || d.fecha);
+                const horaTxt = fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                const isLast = filasIdx === filasDelDia.length - 1;
+                html += generarFilaHistorial(d, horaTxt, idMes, idDia, isLast);
+            });
+        });
+    });
+
+    return html;
+}
+
+/**
+ * Genera una fila del historial
+ * @private
+ */
+function generarFilaHistorial(d, etiquetaPrincipal, etiquetaSecundaria, accordionId = '', isLast = false) {
+    let iconClass = 'fa-coins';
+    if (d.tipo === 'Tarjeta') iconClass = 'fa-credit-card';
+    if (d.tipo === 'Yape/Plin') iconClass = 'fa-qrcode';
+
+    const dataStr = encodeURIComponent(JSON.stringify({
+        monto: d.monto,
+        tipo: ['Efectivo', 'Tarjeta', 'Yape/Plin'].includes(d.tipo) ? d.tipo : 'Otros',
+        fecha: d.fecha_str.split('T')[0]
+    }));
+
+    let claseAccordion = '';
+    if (accordionId) {
+        claseAccordion = `accordion-item accordion-item-${accordionId}`;
+        if (isLast) claseAccordion += ' accordion-last';
+    }
+
+    return `<tr class="${claseAccordion}">
+        <td width="50">
+            <div style="width:36px; height:36px; background:var(--bg-body); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--text-muted);">
+                <i class="fas ${iconClass}"></i>
+            </div>
+        </td>
+        <td>
+            <div style="font-weight:600; font-size:0.9rem;">${['Efectivo', 'Tarjeta', 'Yape/Plin'].includes(d.tipo) ? d.tipo : 'Otros'}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">${etiquetaPrincipal}${etiquetaSecundaria ? ' • ' + etiquetaSecundaria : ''}</div>
+        </td>
+        <td class="text-end" style="font-weight:700;">S/${d.monto.toFixed(2)}</td>
+        <td class="text-end" style="min-width:80px;">
+            <div class="d-flex justify-content-end">
+                <button onclick="abrirEdicion('${d.id}', '${dataStr}')" class="btn-edit-mini"><i class="fas fa-pen"></i></button>
+                <button onclick="borrarRegistro('${d.id}')" class="btn-trash-mini"><i class="fas fa-times"></i></button>
+            </div>
+        </td>
+    </tr>`;
+}
+
+/**
+ * Genera una fila del historial para vista anidada (Año con subgrupos de día)
+ * @private
+ */
+function generarFilaHistorialAnidado(d, horaTxt, idMesAccordion, idDiaAccordion, isLast = false) {
+    let iconClass = 'fa-coins';
+    if (d.tipo === 'Tarjeta') iconClass = 'fa-credit-card';
+    if (d.tipo === 'Yape/Plin') iconClass = 'fa-qrcode';
+
+    const dataStr = encodeURIComponent(JSON.stringify({
+        monto: d.monto,
+        tipo: ['Efectivo', 'Tarjeta', 'Yape/Plin'].includes(d.tipo) ? d.tipo : 'Otros',
+        fecha: d.fecha_str.split('T')[0]
+    }));
+
+    let claseAccordion = `accordion-item accordion-item-${idDiaAccordion}`;
+    if (isLast) claseAccordion += ' accordion-last';
+
+    return `<tr class="${claseAccordion}">
+        <td width="50" style="padding-left: 40px !important;">
+            <div style="width:36px; height:36px; background:var(--bg-body); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--text-muted);">
+                <i class="fas ${iconClass}"></i>
+            </div>
+        </td>
+        <td>
+            <div style="font-weight:600; font-size:0.9rem;">${['Efectivo', 'Tarjeta', 'Yape/Plin'].includes(d.tipo) ? d.tipo : 'Otros'}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">${horaTxt}</div>
+        </td>
+        <td class="text-end" style="font-weight:700;">S/${d.monto.toFixed(2)}</td>
+        <td class="text-end" style="min-width:80px;">
+            <div class="d-flex justify-content-end">
+                <button onclick="abrirEdicion('${d.id}', '${dataStr}')" class="btn-edit-mini"><i class="fas fa-pen"></i></button>
+                <button onclick="borrarRegistro('${d.id}')" class="btn-trash-mini"><i class="fas fa-times"></i></button>
+            </div>
+        </td>
+    </tr>`;
+}
+
+/**
+ * Expande/contrae un acordeón en el historial
+ * @param {string} id - ID del acordeón a toggle
+ * @param {Event} event - Evento del click
+ * @window
+ */
+window.toggleAccordion = (id, event) => {
+    event.stopPropagation();
+    const header = event.currentTarget;
+    const icon = header.querySelector('.accordion-icon');
+    const iconSub = header.querySelector('.accordion-icon-sub');
+    const items = document.querySelectorAll(`.accordion-item-${id}`);
+    
+    if (!items || items.length === 0) return;
+    
+    const isOpen = items[0].classList.contains('open');
+    
+    items.forEach(item => {
+        if (isOpen) {
+            item.classList.remove('open');
+        } else {
+            item.classList.add('open');
+        }
+    });
+    
+    // Controlar visualización del header
+    if (isOpen) {
+        header.classList.remove('accordion-open');
+    } else {
+        header.classList.add('accordion-open');
+    }
+    
+    if (icon) {
+        icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+    
+    if (iconSub) {
+        iconSub.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+};
 
 /* ============================================================================
    7. MANEJADORES DE EVENTOS
@@ -865,7 +734,6 @@ function renderizarHistorial(lista) {
 
 /**
  * Maneja click en tarjeta de método de pago
- * Muestra/oculta búsqueda de compañero según tipo
  * @param {Event} e - Evento del click
  * @private
  */
@@ -873,56 +741,17 @@ function handleMethodClick(e) {
     document.querySelectorAll('.method-card').forEach(c => c.classList.remove('active'));
     e.currentTarget.classList.add('active');
 
-    const tipo = e.currentTarget.getAttribute('data-tipo');
-    const divComp = document.getElementById('divCompanero');
-
-    if (tipo === 'Corredor') {
-        divComp.classList.remove('d-none');
-        divComp.classList.add('fade-in');
-    } else {
-        divComp.classList.add('d-none');
-    }
-
     setFechaHoyInput();
     document.getElementById('inputMonto').focus();
 }
 
 /**
- * Maneja click en botones de filtro de período
- * @param {Event} e - Evento del click
- * @private
- */
-function handleFilterClick(e) {
-    document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
-
-    const btnId = e.target.id;
-    filtroActual = btnId === 'btnDia' ? 'dia' : btnId === 'btnMes' ? 'mes' : 'ano';
-
-    fechaVisualizacion = new Date();
-    actualizarUI();
-}
-
-/**
- * Actualiza la etiqueta de fecha según el filtro activo
- * Muestra: "Hoy", "Enero de 2026", "2026"
+ * Actualiza la etiqueta mostrando el año actual
  * @private
  */
 function actualizarEtiquetaFecha() {
     const lbl = document.getElementById('labelFechaActual');
-
-    if (filtroActual === 'dia') {
-        lbl.innerText = fechaVisualizacion.toDateString() === new Date().toDateString()
-            ? "Hoy"
-            : fechaVisualizacion.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-    } else if (filtroActual === 'mes') {
-        const fechaFormato = fechaVisualizacion.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-        lbl.innerText = fechaFormato.charAt(0).toUpperCase() + fechaFormato.slice(1);
-
-    } else {
-        lbl.innerText = fechaVisualizacion.getFullYear();
-    }
+    lbl.innerText = fechaVisualizacion.getFullYear();
 }
 
 /**
@@ -942,13 +771,7 @@ function setFechaHoyInput() {
  */
 function limpiarFormulario() {
     document.getElementById('inputMonto').value = '';
-    document.getElementById('inputSearchCompanero').value = '';
-    document.getElementById('inputSearchCompanero').disabled = false;
-    document.getElementById('btnClearSearch').classList.add('d-none');
-    document.getElementById('selectedCompaneroUid').value = '';
-    document.getElementById('finalCompaneroName').value = '';
     document.querySelectorAll('.method-card').forEach(c => c.classList.remove('active'));
-    document.getElementById('divCompanero').classList.add('d-none');
 }
 
 /* ============================================================================
@@ -990,7 +813,7 @@ window.borrarRegistro = async (id) => {
 
 /**
  * Abre un modal para editar un registro de propina
- * Permite cambiar: fecha, monto, tipo, compañero
+ * Permite cambiar: fecha, monto y tipo
  * @param {string} id - ID del documento a editar
  * @param {string} dataEncoded - Datos codificados en URL encoding
  * @global
@@ -1004,7 +827,7 @@ window.abrirEdicion = async (id, dataEncoded) => {
     const htmlForm = `
         <div class="text-start">
             <div class="mb-3">
-                <label class="small text-muted-adaptive d-block mb-2"><i class="far fa-calendar me-2"></i>Fecha</label>
+                <label class="small text-muted-adaptive d-block mb-2">Fecha</label>
                 <div class="input-group-custom">
                     <span class="currency"><i class="far fa-calendar"></i></span>
                     <input type="date" id="editFecha" class="form-control-custom" value="${data.fecha}">
@@ -1012,74 +835,58 @@ window.abrirEdicion = async (id, dataEncoded) => {
             </div>
 
             <div class="mb-3">
-                <label class="small text-muted-adaptive d-block mb-2"><i class="fas fa-coins me-2"></i>Monto (S/)</label>
+                <label class="small text-muted-adaptive d-block mb-2">Monto (S/)</label>
                 <div class="input-group-custom">
                     <span class="currency">S/</span>
-                    <input type="number" id="editMonto" class="form-control-custom" value="${data.monto}" step="0.50" min="0">
+                    <input type="number" id="editMonto" class="form-control-custom" value="${data.monto}" step="0.50" min="0" max="999" oninput="if(this.value.length > 3) this.value = this.value.slice(0,3);">
                 </div>
             </div>
 
             <div class="mb-3">
-                <label class="small text-muted-adaptive d-block mb-2"><i class="fas fa-wallet me-2"></i>Método</label>
+                <label class="small text-muted-adaptive d-block mb-2">Método</label>
                 <div class="input-group-custom">
-                    <span class="currency"><i class="fas fa-wallet"></i></span>
+                    <span class="currency"><i class="fas fa-credit-card"></i></span>
                     <select id="editTipo" class="form-control-custom form-select">
                         <option value="Efectivo" ${data.tipo === 'Efectivo' ? 'selected' : ''}>Efectivo</option>
                         <option value="Tarjeta" ${data.tipo === 'Tarjeta' ? 'selected' : ''}>Tarjeta</option>
-                        <option value="Corredor" ${data.tipo === 'Corredor' ? 'selected' : ''}>Corredor</option>
                         <option value="Yape/Plin" ${data.tipo === 'Yape/Plin' ? 'selected' : ''}>Digital</option>
+                        <option value="Otros" ${data.tipo === 'Otros' ? 'selected' : ''}>Otros</option>
                     </select>
                 </div>
             </div>
 
-            <div id="divEditCompanero" class="${data.tipo === 'Corredor' ? '' : 'd-none'} fade-in">
-                <label class="small text-muted-adaptive d-block mb-2"><i class="fas fa-user me-2"></i>Compañero(a)</label>
-                <div class="position-relative">
-                    <div class="input-group-custom">
-                        <span class="currency"><i class="fas fa-search"></i></span>
-                        <input type="text" id="editInputSearch" class="form-control-custom"
-                               placeholder="Buscar..." autocomplete="off"
-                               value="${data.companero || ''}"
-                               style="padding-left: 50px;">
-                        <button type="button" id="editBtnClear" class="btn btn-sm text-muted position-absolute end-0 top-50 translate-middle-y me-3 ${data.companero ? '' : 'd-none'}" style="z-index: 10; border: none; background: none;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div id="editSearchResults" class="search-dropdown d-none" style="max-height: 200px;"></div>
-                </div>
-                <input type="hidden" id="editSelectedUid" value="${data.companero_uid || ''}">
-                <input type="hidden" id="editFinalName" value="${data.companero || ''}">
-            </div>
         </div>
     `;
 
     const result = await Swal.fire({
-        title: '<i class="fas fa-pen me-2"></i>Editar Propina',
+        title: 'Editar Propina',
         html: htmlForm,
         showCancelButton: true,
         confirmButtonText: 'Guardar',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#D32F2F',
-        cancelButtonColor: '#64748b',
+        cancelButtonColor: isDark ? '#64748b' : '#94a3b8',
         background: isDark ? '#1e293b' : '#f8fafc',
-        color: isDark ? '#ffffff' : '#0f172a',
+        color: isDark ? '#e2e8f0' : '#0f172a',
         customClass: {
             popup: 'glass-card',
             title: 'fw-bold',
             confirmButton: 'btn btn-action',
             cancelButton: 'btn btn-sm'
         },
-
-        didOpen: () => {
-            configuraEditoresEventos(data);
+        willOpen: () => {
+            // Agregar estilos adicionales para inputs en dark mode
+            if (isDark) {
+                const inputs = document.querySelectorAll('.form-control-custom, .form-select');
+                inputs.forEach(input => {
+                    input.style.color = '#e2e8f0';
+                });
+            }
         },
-
         preConfirm: () => ({
             fecha: document.getElementById('editFecha').value,
             monto: parseFloat(document.getElementById('editMonto').value),
-            tipo: document.getElementById('editTipo').value,
-            companero: document.getElementById('editFinalName').value,
-            companero_uid: document.getElementById('editSelectedUid').value
+            tipo: document.getElementById('editTipo').value
         })
     });
 
@@ -1096,17 +903,8 @@ window.abrirEdicion = async (id, dataEncoded) => {
             return Swal.fire('Fecha Inválida', 'No puedes editar con fechas futuras.', 'warning');
         }
 
-        if (d.tipo === 'Corredor') {
-            if (d.monto > 50) {
-                return Swal.fire('Alto', 'Máximo S/50 para corredor', 'warning');
-            }
-            if (!d.companero || !validarNombre(d.companero)) {
-                return Swal.fire('Falta nombre', 'Nombre de compañero inválido (2-50 caracteres).', 'warning');
-            }
-        } else {
-            if (d.monto > 999) {
-                return Swal.fire('Error', 'Monto excede límite permitido', 'error');
-            }
+        if (d.monto > 999) {
+            return Swal.fire('Error', 'Monto excede límite permitido', 'error');
         }
 
         /* ---- ACTUALIZAR EN FIRESTORE ---- */
@@ -1115,8 +913,6 @@ window.abrirEdicion = async (id, dataEncoded) => {
             await updateDoc(doc(db, "ingresos", id), {
                 monto: d.monto,
                 tipo: d.tipo,
-                companero: d.tipo === 'Corredor' ? d.companero : null,
-                companero_uid: (d.tipo === 'Corredor' && d.companero_uid) ? d.companero_uid : null,
                 fecha: fechaObj,
                 fecha_str: fechaObj.toISOString()
             });
@@ -1145,116 +941,6 @@ window.abrirEdicion = async (id, dataEncoded) => {
     }
 };
 
-/**
- * Configura los eventos del formulario de edición
- * (Cambio de tipo de propina, buscador de compañeros, etc.)
- * MEJORADO: Sanitización XSS en buscador
- * @param {Object} data - Datos actuales del registro
- * @private
- */
-function configuraEditoresEventos(data) {
-    const select = document.getElementById('editTipo');
-    const divComp = document.getElementById('divEditCompanero');
-    const input = document.getElementById('editInputSearch');
-    const dropdown = document.getElementById('editSearchResults');
-    const hiddenUid = document.getElementById('editSelectedUid');
-    const hiddenName = document.getElementById('editFinalName');
-    const btnClear = document.getElementById('editBtnClear');
-
-    /* ---- CAMBIO DE TIPO (Mostrar/Ocultar Compañero) ---- */
-    select.addEventListener('change', (e) => {
-        if (e.target.value === 'Corredor') {
-            divComp.classList.remove('d-none');
-            divComp.classList.add('fade-in');
-            setTimeout(() => input.focus(), 100);
-        } else {
-            divComp.classList.add('d-none');
-            hiddenUid.value = '';
-            hiddenName.value = '';
-        }
-    });
-
-    /* ---- BUSCADOR DE COMPAÑEROS (CON DEBOUNCE) ---- */
-    const debouncedSearch = debounce((texto) => {
-        if (texto.length < 1) {
-            dropdown.classList.add('d-none');
-            return;
-        }
-
-        /* ---- FILTRAR USUARIOS ---- */
-        const coincidencias = listaUsuariosSistema.filter(u =>
-            u.displayName.toLowerCase().includes(texto.toLowerCase()) &&
-            u.uid !== usuarioApp.uid
-        );
-
-        let html = '';
-
-        /* ---- RENDERIZAR COINCIDENCIAS - ESCAPAR XSS ---- */
-        coincidencias.forEach(u => {
-            const displayNameSeguro = escapeHtml(u.displayName);
-            const photoUrl = escapeHtml(u.photoURL || '');
-            html += `
-            <div class="user-item" data-uid="${u.uid}" data-name="${displayNameSeguro}">
-                <img src="${photoUrl}" alt="${displayNameSeguro}" style="pointer-events:none;">
-                <div class="user-item-info" style="pointer-events:none;">
-                    <span class="user-item-name">${displayNameSeguro}</span>
-                    <span class="user-item-badge"><i class="fas fa-check-circle"></i> Registrado</span>
-                </div>
-            </div>`;
-        });
-
-        /* ---- OPCIÓN MANUAL - VALIDADA ---- */
-        if (validarNombre(texto)) {
-            const textoSeguro = escapeHtml(texto.substring(0, 50));
-            html += `
-            <div class="user-item add-manual-item" data-uid="" data-name="${textoSeguro}">
-                <i class="fas fa-plus" style="pointer-events:none;"></i>
-                <div class="user-item-info" style="pointer-events:none;">
-                    <span class="user-item-name">Usar "${textoSeguro}"</span>
-                    <span class="user-item-badge">Externo</span>
-                </div>
-            </div>`;
-        }
-
-        dropdown.innerHTML = html;
-        dropdown.classList.remove('d-none');
-    }, 300);
-
-    input.addEventListener('input', (e) => debouncedSearch(e.target.value));
-
-    /* ---- SELECCIÓN DE USUARIO ---- */
-    dropdown.addEventListener('click', (e) => {
-        const item = e.target.closest('.user-item');
-        if (item) {
-            const uid = item.dataset.uid;
-            const name = item.dataset.name.replace(/\b\w/g, l => l.toUpperCase());
-
-            // Validar antes de fijar
-            if (!validarNombre(name)) {
-                Swal.fire('Error', 'Nombre inválido', 'error');
-                return;
-            }
-
-            input.value = name;
-            hiddenUid.value = uid;
-            hiddenName.value = name;
-
-            input.disabled = true;
-            btnClear.classList.remove('d-none');
-            dropdown.classList.add('d-none');
-        }
-    });
-
-    /* ---- BOTÓN LIMPIAR ---- */
-    btnClear.addEventListener('click', (e) => {
-        e.preventDefault();
-        input.value = '';
-        hiddenUid.value = '';
-        hiddenName.value = '';
-        input.disabled = false;
-        btnClear.classList.add('d-none');
-        input.focus();
-    });
-
-    if (data.companero) input.disabled = true;
-}
+// ============================================================================
+// LOGOUT
+// ============================================================================

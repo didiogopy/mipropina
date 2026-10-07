@@ -21,9 +21,8 @@ import {
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
-import { doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-import { auth, provider, db } from "../config/firebase.js";
-import { iniciarDashboard } from "../dashboard/operaciones.js";
+import { auth, provider } from "../config/firebase.js";
+import { iniciarDashboard } from "../dashboard/app-orchestrator.js";
 
 /* ============================================================================
    REFERENCIAS A ELEMENTOS DEL DOM
@@ -93,23 +92,6 @@ onAuthStateChanged(auth, async (user) => {
         // Actualizar UI con datos del usuario
         document.getElementById('userName').innerText = user.displayName;
         document.getElementById('userPhoto').src = user.photoURL;
-
-        // Guardar perfil público en Firestore (para búsqueda)
-        try {
-            await setDoc(
-                doc(db, "usuarios", user.uid),
-                {
-                    uid: user.uid,
-                    displayName: user.displayName,
-                    photoURL: user.photoURL,
-                    email: user.email,
-                    lastLogin: new Date()
-                },
-                { merge: true }
-            );
-        } catch (error) {
-            console.error("Error guardando perfil:", error);
-        }
 
         // Iniciar dashboard y cargar datos
         iniciarDashboard(user);

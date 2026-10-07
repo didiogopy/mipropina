@@ -158,6 +158,15 @@ window.seleccionarUsuario()     // +validación
 window.seleccionarManual()      // +validación
 ```
 
+## [Sin versión] - Dashboard mensual y simplificación de pagos
+
+- El resumen inicial prioriza el mes seleccionado; las flechas navegan por meses.
+- El balance anual queda como sección secundaria plegable y controla por separado el año del historial.
+- El historial anual abre los meses cerrados; al desplegar un mes aparecen días cerrados y cada día muestra sus registros.
+- Se retiraron el método Corredor, la búsqueda de compañeros, la colección usada para el directorio y el ranking global.
+- Los registros históricos de métodos retirados se conservan y se muestran como Otros, sin exponer nombres asociados.
+- Los métodos nuevos disponibles son efectivo, tarjeta y digital.
+
 ### Próximas Mejoras (Roadmap)
 - [ ] Variables de entorno para Firebase config
 - [ ] Paginación en directorio (limit 500 usuarios)

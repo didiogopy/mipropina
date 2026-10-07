@@ -1,5 +1,7 @@
 # 📖 ÍNDICE DE DOCUMENTACIÓN - MiPropina v1.1.0
 
+> **Nota de vigencia:** este índice y varias guías enlazadas describen la versión histórica 1.1.0. La aplicación actual prioriza el resumen mensual, ofrece el balance anual como sección plegable, y registra efectivo, tarjeta y pagos digitales. Las menciones antiguas a Corredor, búsqueda de compañeros y ranking no describen funciones disponibles.
+
 ## 🎯 Eres nuevo? Empieza aquí:
 
 ```
