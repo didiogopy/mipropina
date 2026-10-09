@@ -276,7 +276,7 @@ function actualizarIndicadorSincronizacion(sincronizado = true, sincronizando = 
         badge.className = 'badge bg-warning ms-2';
     } else if (sincronizado) {
         badge.innerHTML = '<i class="fas fa-check-circle"></i> Actualizado';
-        badge.className = 'badge bg-success ms-2';
+        badge.className = 'badge bg-warning text-dark ms-2';
     } else {
         badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Desconectado';
         badge.className = 'badge bg-danger ms-2';
@@ -441,7 +441,7 @@ function renderizarGrafico(datos) {
             labels: Object.keys(resumen),
             datasets: [{
                 data: Object.values(resumen),
-                backgroundColor: ['#10b981', '#3b82f6', '#D32F2F', '#8b5cf6'],
+                backgroundColor: ['#FFC400', '#E10600', '#B00000', '#9A8F87'],
                 borderWidth: 0,
                 borderRadius: 4,
                 hoverOffset: 10
@@ -581,7 +581,7 @@ function renderizarHistorialPorMes(lista) {
             // Sub-header del día (acordeón nivel 2)
             html += `
             <tr class="accordion-item accordion-item-${idMes} accordion-header-sub" data-accordion="${idDia}" onclick="toggleAccordion('${idDia}', event)" style="cursor: pointer;">
-                <td colspan="4" style="padding: 10px 12px !important; margin-left: 16px; background: rgba(211, 47, 47, 0.02); border-left: 3px solid rgba(211, 47, 47, 0.2);">
+                <td colspan="4" style="padding: 10px 12px !important; margin-left: 16px; background: rgba(225, 6, 0, 0.02); border-left: 3px solid rgba(225, 6, 0, 0.2);">
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <div style="flex: 1;">
                             <div style="font-weight: 500; font-size: 0.9rem; color: var(--text-main);">${dia}</div>
@@ -597,8 +597,7 @@ function renderizarHistorialPorMes(lista) {
 
             // Filas individuales del día
             filasDelDia.forEach((d, filasIdx) => {
-                const fecha = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha_str || d.fecha);
-                const horaTxt = fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                const horaTxt = obtenerHoraRegistro(d);
                 const isLast = filasIdx === filasDelDia.length - 1;
                 html += generarFilaHistorial(d, horaTxt, idMes, idDia, isLast);
             });
@@ -606,6 +605,16 @@ function renderizarHistorialPorMes(lista) {
     });
 
     return html;
+}
+
+function obtenerHoraRegistro(ingreso) {
+    const value = ingreso.createdAt || ingreso.timestamp;
+    if (!value) return '';
+
+    const date = value.toDate instanceof Function ? value.toDate() : new Date(value);
+    return Number.isNaN(date.getTime())
+        ? ''
+        : date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -637,7 +646,7 @@ function generarFilaHistorial(d, etiquetaPrincipal, etiquetaSecundaria, accordio
         </td>
         <td>
             <div style="font-weight:600; font-size:0.9rem;">${['Efectivo', 'Tarjeta', 'Yape/Plin'].includes(d.tipo) ? d.tipo : 'Otros'}</div>
-            <div style="font-size:0.75rem; color:var(--text-muted);">${etiquetaPrincipal}${etiquetaSecundaria ? ' • ' + etiquetaSecundaria : ''}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">${etiquetaPrincipal}${etiquetaSecundaria ? ' • ' + etiquetaSecundaria : ''}${horaTxt ? ` · Registrada ${horaTxt}` : ''}</div>
         </td>
         <td class="text-end" style="font-weight:700;">S/${d.monto.toFixed(2)}</td>
         <td class="text-end" style="min-width:80px;">
@@ -675,7 +684,7 @@ function generarFilaHistorialAnidado(d, horaTxt, idMesAccordion, idDiaAccordion,
         </td>
         <td>
             <div style="font-weight:600; font-size:0.9rem;">${['Efectivo', 'Tarjeta', 'Yape/Plin'].includes(d.tipo) ? d.tipo : 'Otros'}</div>
-            <div style="font-size:0.75rem; color:var(--text-muted);">${horaTxt}</div>
+            ${horaTxt ? `<div style="font-size:0.75rem; color:var(--text-muted);">Registrada ${horaTxt}</div>` : ''}
         </td>
         <td class="text-end" style="font-weight:700;">S/${d.monto.toFixed(2)}</td>
         <td class="text-end" style="min-width:80px;">
@@ -791,10 +800,10 @@ window.borrarRegistro = async (id) => {
         title: '¿Borrar?',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#D32F2F',
+        confirmButtonColor: '#E10600',
         confirmButtonText: 'Sí',
-        background: isDark ? '#1e293b' : '#fff',
-        color: isDark ? '#fff' : '#000'
+        background: isDark ? '#2b2421' : '#fff9ed',
+        color: isDark ? '#fff8ef' : '#251c18'
     }).then(r => r.isConfirmed);
 
     if (confirmado) {
@@ -864,10 +873,10 @@ window.abrirEdicion = async (id, dataEncoded) => {
         showCancelButton: true,
         confirmButtonText: 'Guardar',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#D32F2F',
-        cancelButtonColor: isDark ? '#64748b' : '#94a3b8',
-        background: isDark ? '#1e293b' : '#f8fafc',
-        color: isDark ? '#e2e8f0' : '#0f172a',
+        confirmButtonColor: '#E10600',
+        cancelButtonColor: isDark ? '#71645b' : '#d8c8b9',
+        background: isDark ? '#2b2421' : '#fff9ed',
+        color: isDark ? '#fff8ef' : '#251c18',
         customClass: {
             popup: 'glass-card',
             title: 'fw-bold',
@@ -879,7 +888,7 @@ window.abrirEdicion = async (id, dataEncoded) => {
             if (isDark) {
                 const inputs = document.querySelectorAll('.form-control-custom, .form-select');
                 inputs.forEach(input => {
-                    input.style.color = '#e2e8f0';
+                    input.style.color = '#fff8ef';
                 });
             }
         },

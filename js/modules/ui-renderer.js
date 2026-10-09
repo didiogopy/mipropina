@@ -170,7 +170,7 @@ function renderMonthHeader(mes, id, count, total) {
 function renderDayHeader(idSemana, idDia, dia, count, total) {
     return `
     <tr class="accordion-item accordion-header-sub" data-parent-accordion="${idSemana}" data-accordion="${idDia}" data-accordion-level="day" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAccordion('${idDia}', event)}" onclick="toggleAccordion('${idDia}', event)">
-        <td colspan="4" style="padding: 10px 12px !important; margin-left: 16px; background: rgba(211, 47, 47, 0.02); border-left: 3px solid rgba(211, 47, 47, 0.2);">
+        <td colspan="4" style="padding: 10px 12px !important; margin-left: 16px; background: rgba(225, 6, 0, 0.02); border-left: 3px solid rgba(225, 6, 0, 0.2);">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div style="flex: 1;">
                     <div style="font-weight: 500; font-size: 0.9rem; color: var(--text-main);">${dia}</div>
@@ -196,9 +196,8 @@ function renderIngresoRow(ingreso, idDia, isLast) {
         label: 'Otros ingresos'
     };
     
-    const fecha = getIngresoDate(ingreso);
-    
-    const horaTxt = formatTime(fecha);
+    const fechaRegistro = getRecordedDate(ingreso);
+    const horaTxt = fechaRegistro ? `Registrada ${formatTime(fechaRegistro)}` : '';
     
     let claseAccordion = 'accordion-item';
     if (isLast) claseAccordion += ' accordion-last';
@@ -212,7 +211,7 @@ function renderIngresoRow(ingreso, idDia, isLast) {
         </td>
         <td>
             <div style="font-weight:600; font-size:0.9rem;">${method.label}</div>
-            <div style="font-size:0.75rem; color:var(--text-muted);">${horaTxt}</div>
+            ${horaTxt ? `<div class="history-recorded-time">${horaTxt}</div>` : ''}
         </td>
         <td class="text-end" style="font-weight:700;">${formatCurrency(ingreso.monto)}</td>
         <td class="text-end" style="min-width:80px;">
@@ -223,6 +222,17 @@ function renderIngresoRow(ingreso, idDia, isLast) {
         </td>
     </tr>
     `;
+}
+
+function getRecordedDate(ingreso) {
+    const value = ingreso.createdAt || ingreso.timestamp;
+    if (!value) return null;
+
+    const date = value.toDate instanceof Function
+        ? value.toDate()
+        : new Date(value);
+
+    return Number.isNaN(date.getTime()) ? null : date;
 }
 
 // ============================================================================

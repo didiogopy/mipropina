@@ -37,9 +37,8 @@ import {
 
 let appState = {
     currentUser: null,
-    currentYear: new Date().getFullYear(),
-    currentMonth: new Date().getMonth(),
-    historyYear: new Date().getFullYear(),
+    selectedDate: new Date(),
+    periodMode: 'day',
     ingresos: [],
     unsubscribeIngresos: null,
     appStatus: APP_STATES.UNAUTHENTICATED
@@ -122,21 +121,37 @@ async function cargarDatos() {
  * @private
  */
 function actualizarUI() {
-    const ingresosDelMes = appState.ingresos.filter(ingreso => {
+    const ingresosDelPeriodo = appState.ingresos.filter(ingreso => {
         const fecha = toCalendarDate(ingreso);
 
-        return !Number.isNaN(fecha.getTime()) &&
-            fecha.getFullYear() === appState.currentYear &&
-            fecha.getMonth() === appState.currentMonth;
+        if (Number.isNaN(fecha.getTime())) return false;
+        if (appState.periodMode === 'day') {
+            return fecha.getFullYear() === appState.selectedDate.getFullYear() &&
+                fecha.getMonth() === appState.selectedDate.getMonth() &&
+                fecha.getDate() === appState.selectedDate.getDate();
+        }
+        if (appState.periodMode === 'month') {
+            return fecha.getFullYear() === appState.selectedDate.getFullYear() &&
+                fecha.getMonth() === appState.selectedDate.getMonth();
+        }
+        return fecha.getFullYear() === appState.selectedDate.getFullYear();
     });
 
     const ingresosDelAnio = appState.ingresos.filter(ingreso => {
         const fecha = toCalendarDate(ingreso);
 
-        return !Number.isNaN(fecha.getTime()) && fecha.getFullYear() === appState.historyYear;
+        return !Number.isNaN(fecha.getTime()) && fecha.getFullYear() === appState.selectedDate.getFullYear();
     });
 
-    updateAllUI(ingresosDelMes, appState.currentYear, appState.currentMonth, ingresosDelAnio, appState.historyYear);
+    updateAllUI(
+        ingresosDelPeriodo,
+        appState.selectedDate.getFullYear(),
+        appState.selectedDate.getMonth(),
+        ingresosDelAnio,
+        appState.selectedDate.getFullYear(),
+        appState.periodMode,
+        appState.selectedDate
+    );
 }
 
 /**
@@ -175,8 +190,10 @@ function configurarEventos() {
         btnSave.addEventListener('click', guardarPropina);
     }
     
-    window.cambiarFecha = handleMonthChange;
-    window.cambiarAnio = handleYearChange;
+    document.querySelectorAll('[data-period-mode]').forEach(button => {
+        button.addEventListener('click', () => handlePeriodModeChange(button.dataset.periodMode));
+    });
+    window.cambiarPeriodo = handlePeriodChange;
     
 }
 
@@ -251,19 +268,24 @@ function handleMethodClick(e) {
     card.setAttribute('aria-pressed', 'true');
 }
 
-function handleMonthChange(delta) {
-    const nextMonth = new Date(appState.currentYear, appState.currentMonth + delta, 1);
-    appState.currentYear = nextMonth.getFullYear();
-    appState.currentMonth = nextMonth.getMonth();
+function handlePeriodModeChange(mode) {
+    if (!['day', 'month', 'year'].includes(mode)) return;
+    appState.periodMode = mode;
+    document.querySelectorAll('[data-period-mode]').forEach(button => {
+        const isSelected = button.dataset.periodMode === mode;
+        button.classList.toggle('is-active', isSelected);
+        button.setAttribute('aria-pressed', String(isSelected));
+    });
     actualizarUI();
 }
 
-/**
- * Cambia el año del historial.
- * @private
- */
-function handleYearChange(delta) {
-    appState.historyYear += delta;
+function handlePeriodChange(delta) {
+    const date = new Date(appState.selectedDate);
+    if (appState.periodMode === 'day') date.setDate(date.getDate() + delta);
+    else if (appState.periodMode === 'month') date.setMonth(date.getMonth() + delta, 1);
+    else date.setFullYear(date.getFullYear() + delta, 0, 1);
+
+    appState.selectedDate = date;
     actualizarUI();
 }
 

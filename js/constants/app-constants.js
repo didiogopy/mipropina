@@ -35,13 +35,13 @@ export const PAYMENT_METHODS_ARRAY = Object.values(PAYMENT_METHODS);
 // ============================================================================
 
 export const COLORS = {
-    PRIMARY: '#D32F2F',           // Rojo Mediterráneo
-    SECONDARY: '#3b82f6',         // Azul
-    SUCCESS: '#10b981',           // Verde
-    WARNING: '#f59e0b',           // Naranja
-    DANGER: '#ef4444',            // Rojo claro
-    LIGHT_BG: '#f8fafc',
-    DARK_BG: '#0f172a'
+    PRIMARY: '#E10600',           // Rojo Mediterráneo
+    SECONDARY: '#FFC400',         // Amarillo Mediterráneo
+    SUCCESS: '#FFC400',           // Amarillo Mediterráneo
+    WARNING: '#FFC400',           // Amarillo Mediterráneo
+    DANGER: '#B00000',            // Rojo oscuro
+    LIGHT_BG: '#fff9ed',
+    DARK_BG: '#1f1a18'
 };
 
 // ============================================================================

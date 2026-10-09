@@ -90,11 +90,11 @@
  * 
  * 3. VISUALIZACIÓN DE DATOS (ui-coordinator.js)
  *    ┌──────────────────────────────────────────────┐
- *    │ 1. Priorizar el mes seleccionado            │
- *    │ 2. Mostrar total y gráfico mensual           │
- *    │ 3. Calcular bruto, comisión y neto tarjeta   │
- *    │ 4. Balance anual secundario y plegable       │
- *    │ 5. Historial anual con meses/días plegables  │
+ *    │ 1. Abrir en el día actual                    │
+ *    │ 2. Cambiar escala: Día, Mes o Año             │
+ *    │ 3. Mostrar gráfico acorde a la escala         │
+ *    │ 4. Calcular total y neto de tarjeta del rango  │
+ *    │ 5. Historial por mes/semana/día/propina       │
  *    └──────────────────────────────────────────────┘
  * 
  * 4. EDICIÓN DE PROPINA (operaciones.js)
@@ -133,7 +133,7 @@
  * TARJETAS (Comisión Niubiz)
  * ├── Porcentaje: 3.5%
  * ├── Cálculo: Bruto - (Bruto × 0.035) = Neto
- * └── Mostrado en resumen del mes seleccionado
+ * └── Mostrado en la escala seleccionada
  * 
  * VALIDACIONES
  * ├── Monto > 0
@@ -155,9 +155,9 @@
  *    ├── Píldora de usuario (expandible)
  *    └── Botón logout
  * 
- * 3. RESUMEN DEL MES
- *    ├── Navegación mensual
- *    ├── Total y gráfico doughnut del mes
+ * 3. RESUMEN POR ESCALA
+ *    ├── Día inicial; selector Día/Mes/Año
+ *    ├── Gráfico por método, día o evolución mensual
  *    └── Bruto, comisión y neto de tarjeta
  * 
  * 4. FORMULARIO REGISTRO

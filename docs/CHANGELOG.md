@@ -167,6 +167,19 @@ window.seleccionarManual()      // +validación
 - Los registros históricos de métodos retirados se conservan y se muestran como Otros, sin exponer nombres asociados.
 - Los métodos nuevos disponibles son efectivo, tarjeta y digital.
 
+## [Sin versión] - Resumen por escala
+
+- El resumen abre en Día y permite cambiar entre Día, Mes y Año con una sola navegación.
+- La gráfica cambia según la escala: métodos de pago, totales diarios o evolución mensual.
+- El total del periodo y la comisión de tarjeta usan la misma selección, sin resumen anual duplicado.
+- Los gráficos usan rojo y amarillo de la marca Mediterráneo y presentan un estado vacío cuando no hay registros.
+
+## [Sin versión] - Identidad Mediterráneo y hora de registro
+
+- La paleta de la aplicación se alinea al rojo Mediterráneo, amarillo de marca, carbón y marfil; se quitaron acentos verdes/azules/morados.
+- La actividad muestra la hora de creación real (`createdAt` o `timestamp`) cuando está disponible.
+- Los registros antiguos que solo conservan la fecha ya no muestran una hora ficticia de 12:00.
+
 ### Próximas Mejoras (Roadmap)
 - [ ] Variables de entorno para Firebase config
 - [ ] Paginación en directorio (limit 500 usuarios)

@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Portal del Colaborador - Mediterráneo">
-    <meta name="theme-color" content="#D32F2F">
+    <meta name="theme-color" content="#E10600">
     <title>Mediterráneo | Portal Colaborador</title>    
 
     <!-- Favicon: Logo oficial de Mediterráneo -->
@@ -84,7 +84,7 @@
          ======================================================================== -->
     <header class="dashboard-header">
         <div class="dashboard-brand">
-            <span class="dashboard-eyebrow">MEDITERRÁNEO · COLABORADORES</span>
+                            <span class="dashboard-eyebrow">MEDITERRÁNEO · COLABORADORES</span>
             <h1>Mis propinas</h1>
             <p>Un vistazo claro a tus ingresos.</p>
         </div>
@@ -115,28 +115,38 @@
         <section class="dashboard-panel is-active" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" data-dashboard-panel="overview">
             <div class="overview-grid">
                 <section class="dashboard-section balance-section" aria-labelledby="balance-title">
-                    <div class="section-heading">
+                    <div class="section-heading period-heading">
                         <div>
-                            <span class="section-kicker">MES SELECCIONADO</span>
-                            <h2 id="balance-title">Estado del mes</h2>
+                            <span class="section-kicker" id="periodKicker">HOY</span>
+                            <h2 id="balance-title">Estado diario</h2>
                         </div>
-                        <div class="year-switcher" aria-label="Cambiar mes">
-                            <button type="button" class="year-button" onclick="cambiarFecha(-1)" title="Mes anterior" aria-label="Mes anterior">
-                                <i class="fas fa-chevron-left" aria-hidden="true"></i>
-                            </button>
-                            <span id="labelFechaActual">Este mes</span>
-                            <button type="button" class="year-button" onclick="cambiarFecha(1)" title="Mes siguiente" aria-label="Mes siguiente">
-                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                            </button>
+                        <div class="period-switcher" role="group" aria-label="Escala del resumen">
+                            <button type="button" class="period-option is-active" data-period-mode="day" aria-pressed="true">Día</button>
+                            <button type="button" class="period-option" data-period-mode="month" aria-pressed="false">Mes</button>
+                            <button type="button" class="period-option" data-period-mode="year" aria-pressed="false">Año</button>
                         </div>
+                    </div>
+                    <div class="period-navigation" aria-label="Navegar periodo">
+                        <button type="button" class="year-button" onclick="cambiarPeriodo(-1)" title="Periodo anterior" aria-label="Periodo anterior">
+                            <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                        </button>
+                        <span id="labelFechaActual">Hoy</span>
+                        <button type="button" class="year-button" onclick="cambiarPeriodo(1)" title="Periodo siguiente" aria-label="Periodo siguiente">
+                            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div class="period-total">
+                        <span id="totalCaption">Total del día</span>
+                        <strong id="totalLabel">S/0.00</strong>
                     </div>
                     <div class="chart-container">
-                        <canvas id="miGrafico" aria-label="Distribución de propinas por método de pago"></canvas>
-                        <div class="chart-center-text">
-                            <small class="d-block text-muted-adaptive">Acumulado</small>
-                            <span class="fw-bold fs-2 text-adaptive" id="totalLabel">S/0.00</span>
+                        <canvas id="miGrafico" aria-label="Propinas del periodo seleccionado"></canvas>
+                        <div id="chartEmptyState" class="chart-empty-state" hidden>
+                            <i class="fas fa-chart-bar" aria-hidden="true"></i>
+                            <span>Sin propinas en este periodo</span>
                         </div>
                     </div>
+                    <p class="chart-description" id="chartDescription">Distribución de hoy por método de pago.</p>
                 </section>
 
                 <section class="dashboard-section payout-section" aria-labelledby="payout-title">
@@ -167,20 +177,6 @@
                 </section>
             </div>
 
-            <details class="annual-summary">
-                <summary>
-                    <span><span class="section-kicker">CONSULTA SECUNDARIA</span><strong>Resumen anual</strong></span>
-                    <span class="annual-summary-values"><span id="annualTotal">S/0.00</span><span id="annualCount">0 registros</span><i class="fas fa-chevron-down" aria-hidden="true"></i></span>
-                </summary>
-                <div class="annual-summary-content">
-                    <div class="annual-year-control" aria-label="Cambiar año del historial">
-                        <button type="button" class="year-button" onclick="cambiarAnio(-1)" title="Año anterior" aria-label="Año anterior"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
-                        <span id="annualYearLabel">2026</span>
-                        <button type="button" class="year-button" onclick="cambiarAnio(1)" title="Año siguiente" aria-label="Año siguiente"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
-                    </div>
-                    <div class="annual-type-summary" id="annualTypeSummary"></div>
-                </div>
-            </details>
         </section>
 
         <section class="dashboard-panel" id="panel-register" role="tabpanel" aria-labelledby="tab-register" data-dashboard-panel="register" hidden>

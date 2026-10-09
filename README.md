@@ -9,7 +9,9 @@ Aplicación web moderna para que colaboradores rastreen, visualicen y gestionen 
 ## Características
 
 - **Seguro**: Autenticación con Google, validación completa, sanitización XSS
-- **Enfocado**: Estado del mes actual, balance anual opcional y desglose del historial
+- **Enfocado**: Resumen diario inicial con navegación por día, mes o año
+- **Actividad**: Historial por mes, semana de calendario, día y hora real de registro
+- **Identidad**: Rojo y amarillo Mediterráneo con superficies marfil/carbón
 - **Pagos**: Métodos de efectivo, tarjeta y digital; comisión de tarjeta configurable
 - **Responsive**: Funciona en móvil, tablet y desktop
 - **Dark Mode**: Tema oscuro/claro con persistencia
@@ -132,7 +134,7 @@ git status
 
 ### Testing
 
-No hay un runner automatizado configurado. Para verificar la app, iniciar sesión y probar el registro de efectivo, tarjeta y pago digital; revisar el resumen mensual, el balance anual plegable y el historial por mes/día. La suite en `docs/SECURITY_TESTING_SUITE.js` documenta la versión histórica 1.1.0 y no representa los flujos actuales.
+No hay un runner automatizado configurado. Para verificar la app, iniciar sesión y probar el registro de efectivo, tarjeta y pago digital; revisar los resúmenes Día/Mes/Año y el historial por mes/semana/día. La suite en `docs/SECURITY_TESTING_SUITE.js` documenta la versión histórica 1.1.0 y no representa los flujos actuales.
 
 ## Deployment
 
